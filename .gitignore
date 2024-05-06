@@ -1,3 +1,8 @@
+# Created files
+outputs/
+*.pdf
+*.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
