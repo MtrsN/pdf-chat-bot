@@ -1,11 +1,24 @@
 
+'''
+APP - 'Código de Proteção e Defesa do Consumidor'
+
+en-US: 'Consumer Protection and Defense Code'
+
+Required libraries and imports for the application.
+
+Here is a brief description of the libraries used in the application:
+
+1- The `shutup` library is used to suppress the warnings from the transformers library.
+2- The `langchain` library is used to create the pipeline for the question-answering model.
+3- The `transformers` library is used to load the model and tokenizer from the Hugging Face model repository.
+4- The `streamlit` library is used to create the web application.
+'''
+
 import shutup
 shutup.please()
 
 import os
 import re
-import glob
-import time
 import torch
 import textwrap
 import langchain
@@ -23,10 +36,20 @@ from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig,pipeline
 
+'''
+The Hugging Face access token is stored in an environment variable
+Also the device is set to GPU if available, otherwise it is set to CPU.
+'''
+
 HF_TOKEN = os.environ.get('HF_TOKEN')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Paths:
+
+    '''Class with the purpose of storing the paths of files and folders.
+
+    To run with different files, change the path of the PDFs folder in the variable `pdfs`.
+    '''
 
     base = os.path.dirname(os.getcwd())
     
@@ -38,6 +61,14 @@ class Paths:
 
 @st.cache(allow_output_mutation=True)
 def loadMistral():
+
+    '''Function to load the Mistral model and tokenizer from the Hugging Face model repository.
+
+    A few notes about the model and the configuration used:
+        1- The version used is the 7B-Instruct-v0.1, which is a instruct fine-tuned version of the main model.
+        2- The BitsAndBytes quantization is used to reduce the model size and memory usage since the model is large and the application is running on my local machine.
+        3- The cache is set to True to allow the model to be cached and not reloaded every time the application is run.
+    '''
 
     model_repo = "mistralai/Mistral-7B-Instruct-v0.1"
 
@@ -65,6 +96,16 @@ def loadMistral():
 
 @st.cache(allow_output_mutation=True)
 def loadDocuments():
+
+    '''Function to load the documents and create the embeddings using the FAISS library.
+
+    A few steps are performed in this function:
+        1- Load the documents from the PDFs folder.
+        2- Split the text into chunks.
+        3- Create the embeddings using the Hugging Face model.
+        4- If the FAISS index is not saved in the outputs folder, the embeddings are created and saved.
+        5- If the FAISS index is saved, it is loaded from the outputs folder.
+    '''
 
     print("Loading Documents...")
 
@@ -120,6 +161,11 @@ def loadDocuments():
 
 def loadPipeline(model, tokenizer, temperature=0.0, top_p=0.95, repetition_penalty=1.15):
 
+    '''Function to load the pipeline for the language model.
+
+    The reason this function is created is to allow the user to change the temperature, top_p, and repetition_penalty values in the sidebar using the pre-loaded model and tokenizer.
+    '''
+
     print("Temperatura:", temperature)
     print("Top P:", top_p)
 
@@ -139,6 +185,14 @@ def loadPipeline(model, tokenizer, temperature=0.0, top_p=0.95, repetition_penal
     return llm
 
 def loadQAChain(model, tokenizer, vectordb, temperature, top_p, repetition_penalty):
+
+    '''Function to load the QA chain for the language model.
+
+    The QA chain is created using the Mistral model and the FAISS index created from the documents.
+
+    The prompt template is created to provide the context and the question to the model.
+    Notice that the prompt, as stated in the mistral documentation, requires the [INST] tags to be present in the prompt.
+    '''
 
     prompt_template = """
     <s>[INST] You are a helpful lawyer and a client asked you a question about a legal matter. [/INST]
@@ -182,9 +236,16 @@ def loadQAChain(model, tokenizer, vectordb, temperature, top_p, repetition_penal
     return qa_chain
 
 def remove_after(text):
+    '''Function to remove the text after the 'Context' tag in the answer.' This is to handle the text that should not be part of the answer.'''
     return re.sub(r'Context:.*$', '', text, flags=re.DOTALL)
 
 def process_answer(llm, query):
+    
+    '''Function to process the answer from the language model.
+
+    It is also possible to cite the sources from the documents. However, in this example 
+    i'm using documents that usually are related with laws and from my previous experience, those models have issues citing laws and articles.
+    '''
 
     ans = llm.invoke(query)
 
@@ -195,6 +256,11 @@ def process_answer(llm, query):
     return ans['query'], newans
 
 if __name__ == "__main__":
+
+    '''Main function to run the application.
+
+    streamlit run app.py
+    '''
 
     st.title("🤖 CDC 📝")
     st.sidebar.title("Configurações")
